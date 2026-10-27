@@ -77,34 +77,121 @@
                 display: none;
             }
         }
+
+        @media (max-width: 767px) {
+            body {
+                height: auto !important;
+                min-height: 100vh;
+                min-height: 100svh;
+                width: 100% !important;
+                overflow-x: hidden;
+                overflow-y: auto;
+                justify-content: flex-start !important;
+                padding: 16px 12px 12px;
+            }
+
+            .game-header {
+                position: static !important;
+                width: min(100%, 416px);
+                max-width: none !important;
+                padding: 0 !important;
+                flex-direction: column;
+                align-items: stretch;
+                gap: 12px;
+                margin-bottom: 16px;
+            }
+
+            .game-brand {
+                justify-content: center;
+                gap: 10px !important;
+            }
+
+            .game-brand i {
+                font-size: 1.5rem;
+            }
+
+            .game-brand h1 {
+                font-size: 1.25rem;
+                line-height: 1.4;
+                letter-spacing: 0.12em;
+            }
+
+            .game-stats {
+                width: 100%;
+                justify-content: center !important;
+                gap: 6px !important;
+                font-size: 0.75rem;
+            }
+
+            .game-stat {
+                padding: 0.4rem 0.5rem;
+                border-radius: 0.5rem;
+                white-space: nowrap;
+            }
+
+            .game-stat-label {
+                font-size: 0.65rem;
+            }
+
+            .game-stat-value {
+                margin-left: 0.25rem;
+            }
+
+            .game-stats button {
+                padding: 0.4rem 0.5rem;
+                font-size: 0.65rem;
+            }
+
+            .game-container {
+                width: min(100%, 416px);
+                padding: 6px;
+            }
+
+            .game-container canvas {
+                width: 100%;
+                height: auto;
+                aspect-ratio: 1;
+            }
+
+            .mobile-controls {
+                flex: none;
+                margin-top: 12px;
+                padding: 0;
+            }
+
+            footer {
+                margin-top: 12px;
+                margin-bottom: 8px;
+            }
+        }
     </style>
 </head>
 <body class="h-screen w-screen flex flex-col items-center justify-center text-white">
 
     <!-- 头部信息 -->
-    <div class="absolute top-4 w-full px-6 flex justify-between items-center max-w-4xl z-10">
-        <div class="flex items-center gap-3">
+    <div class="game-header absolute top-4 w-full px-6 flex justify-between items-center max-w-4xl z-10">
+        <div class="game-brand flex items-center gap-3">
             <i class="fa-solid fa-gamepad text-3xl text-emerald-400"></i>
             <h1 class="text-2xl font-bold tracking-wider retro-font text-emerald-400 drop-shadow-md">SNAKE</h1>
         </div>
-        <div class="flex flex-wrap items-center justify-end gap-3 text-lg font-mono">
+        <div class="game-stats flex flex-wrap items-center justify-end gap-3 text-lg font-mono">
             <button id="pauseBtn" class="hidden bg-amber-600 hover:bg-amber-500 px-4 py-2 rounded-lg text-sm font-bold" type="button">
                 PAUSE
             </button>
             <button id="resumeBtn" class="hidden bg-emerald-600 hover:bg-emerald-500 px-4 py-2 rounded-lg text-sm font-bold" type="button">
                 RESUME
             </button>
-            <div class="bg-slate-800/80 px-4 py-2 rounded-lg border border-slate-600">
-                <span class="text-slate-400 text-sm">LEVEL</span>
-                <span id="levelDisplay" class="ml-2 text-cyan-400 font-bold">1 / 5</span>
+            <div class="game-stat bg-slate-800/80 px-4 py-2 rounded-lg border border-slate-600">
+                <span class="game-stat-label text-slate-400 text-sm">LEVEL</span>
+                <span id="levelDisplay" class="game-stat-value ml-2 text-cyan-400 font-bold">1 / 5</span>
             </div>
-            <div class="bg-slate-800/80 px-4 py-2 rounded-lg border border-slate-600">
-                <span class="text-slate-400 text-sm">SCORE</span>
-                <span id="scoreDisplay" class="ml-2 text-emerald-400 font-bold">0</span>
+            <div class="game-stat bg-slate-800/80 px-4 py-2 rounded-lg border border-slate-600">
+                <span class="game-stat-label text-slate-400 text-sm">SCORE</span>
+                <span id="scoreDisplay" class="game-stat-value ml-2 text-emerald-400 font-bold">0</span>
             </div>
-            <div class="bg-slate-800/80 px-4 py-2 rounded-lg border border-slate-600">
-                <span class="text-slate-400 text-sm">HIGH</span>
-                <span id="highScoreDisplay" class="ml-2 text-yellow-400 font-bold">0</span>
+            <div class="game-stat bg-slate-800/80 px-4 py-2 rounded-lg border border-slate-600">
+                <span class="game-stat-label text-slate-400 text-sm">HIGH</span>
+                <span id="highScoreDisplay" class="game-stat-value ml-2 text-yellow-400 font-bold">0</span>
             </div>
         </div>
     </div>
