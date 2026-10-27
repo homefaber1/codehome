@@ -1,0 +1,416 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>麻将连连看</title>
+<style>
+  * { box-sizing: border-box; }
+  body {
+    min-height: 100vh;
+    margin: 0;
+    padding: 32px 16px;
+    background:
+      radial-gradient(ellipse at 50% 0%, rgba(255,255,255,0.96), transparent 58%),
+      linear-gradient(145deg, #e8edf4, #dce4ee);
+    color: #273449;
+    font-family: "Segoe UI", "Microsoft YaHei", sans-serif;
+  }
+  .game {
+    width: fit-content;
+    max-width: 100%;
+    margin: 0 auto;
+  }
+  .game-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 24px;
+    margin-bottom: 20px;
+  }
+  .game-title { margin: 0; font-size: 26px; letter-spacing: 2px; }
+  .game-subtitle { margin: 5px 0 0; color: #718096; font-size: 14px; }
+  .level-indicator {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    margin-top: 10px;
+    color: #52657d;
+    font-size: 13px;
+    font-weight: 600;
+  }
+  .level-indicator strong {
+    border-radius: 999px;
+    padding: 5px 10px;
+    background: #e3edf9;
+    color: #2e65ab;
+  }
+  .game-message {
+    margin: 0 0 14px;
+    color: #2e65ab;
+    font-weight: 700;
+    text-align: center;
+  }
+  .restart-button {
+    flex: none;
+    border: 0;
+    border-radius: 10px;
+    padding: 11px 20px;
+    background: #3976c5;
+    color: #fff;
+    font: inherit;
+    font-weight: 600;
+    cursor: pointer;
+    box-shadow: 0 3px 8px rgba(48, 96, 158, 0.22);
+    transition: background 0.18s, transform 0.18s;
+  }
+  .restart-button:hover { background: #2e65ab; transform: translateY(-1px); }
+  .restart-button:focus-visible { outline: 3px solid #9cc5f5; outline-offset: 3px; }
+  .board-frame {
+    max-width: 100%;
+    overflow: auto;
+    padding: 14px;
+    border: 1px solid rgba(189, 176, 154, 0.55);
+    border-radius: 16px;
+    background: linear-gradient(145deg, #fff 0%, #f6f7f9 100%);
+    box-shadow: 0 18px 34px rgba(41, 54, 72, 0.16), inset 0 1px 0 rgba(255,255,255,0.95), inset 0 -2px 4px rgba(111, 124, 142, 0.1);
+  }
+  #board {
+    --board-columns: 8;
+    --tile-size: min(48px, calc((100vw - 162px) / var(--board-columns)));
+    display: grid;
+    grid-template-columns: repeat(var(--board-columns), var(--tile-size));
+    gap: 6px;
+    position: relative;
+    width: fit-content;
+    margin: 0 auto;
+  }
+  #board > .connection-line {
+    position: absolute;
+    inset: 0;
+    z-index: 4;
+    width: 100%;
+    height: 100%;
+    overflow: visible;
+    pointer-events: none;
+  }
+  .connection-line path {
+    fill: none;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+    vector-effect: non-scaling-stroke;
+  }
+  .connection-line .line-glow { filter: blur(4px); opacity: 0.75; }
+  .connection-line .line-halo { opacity: 0.95; }
+  .connection-line .line-core { opacity: 1; }
+  .cell {
+    width: var(--tile-size);
+    height: var(--tile-size);
+    position: relative;
+    z-index: 2;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: visible;
+    cursor: pointer;
+    transition: transform 0.16s, filter 0.16s;
+  }
+  .cell:not(.empty):hover {
+    z-index: 2;
+    transform: translateY(-3px);
+    filter: drop-shadow(0 5px 4px rgba(42, 55, 74, 0.24));
+  }
+  .cell.empty { border-color: transparent; background: transparent; box-shadow: none; cursor: default; }
+  .cell.selected {
+    z-index: 2;
+    outline: 2px solid #4386d7;
+    outline-offset: 2px;
+    border-radius: 6px;
+    filter: drop-shadow(0 4px 5px rgba(51, 79, 112, 0.3));
+    transform: translateY(-2px) scale(1.04);
+  }
+  .cell img {
+    display: block;
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+    filter: drop-shadow(0 2px 2px rgba(67, 52, 33, 0.2));
+  }
+  @media (max-width: 520px) {
+    body { padding: 20px 10px; }
+    .game-header { gap: 12px; margin-bottom: 14px; }
+    .game-title { font-size: 21px; }
+    .game-subtitle { font-size: 12px; }
+    .restart-button { padding: 9px 13px; font-size: 14px; }
+    .board-frame { padding: 8px; border-radius: 12px; }
+    #board { --tile-size: min(48px, calc((100vw - 100px) / var(--board-columns))); gap: 4px; }
+    .cell.selected { border-radius: 5px; }
+  }
+</style>
+</head>
+<body>
+<main class="game">
+  <header class="game-header">
+    <div>
+      <h1 class="game-title">麻将连连看</h1>
+      <p class="game-subtitle">找出相同图案，连接并消除</p>
+      <div class="level-indicator">
+        <strong id="level-name">第 1 关 · 入门</strong>
+        <span id="tile-count">24 张牌</span>
+      </div>
+    </div>
+    <button class="restart-button" onclick="initGame()">重新开始</button>
+  </header>
+  <p id="game-message" class="game-message" role="status" aria-live="polite" hidden></p>
+  <section class="board-frame" aria-label="连连看棋盘">
+    <div id="board"></div>
+  </section>
+</main>
+
+<script>
+const LEVELS = [
+  { name: '入门', rows: 4, cols: 6, imageTypes: 6 },
+  { name: '初级', rows: 6, cols: 8, imageTypes: 8 },
+  { name: '进阶', rows: 8, cols: 10, imageTypes: 10 },
+  { name: '困难', rows: 10, cols: 12, imageTypes: 12 },
+  { name: '大师', rows: 12, cols: 14, imageTypes: 14 }
+];
+let currentLevel = 0;
+let ROWS = LEVELS[currentLevel].rows;
+let COLS = LEVELS[currentLevel].cols;
+const IMAGE_FILES = [
+  '1.png', '2.png', '3.png', '4.png', '5.png', '6.png', '7.png', '8.png', '9.png',
+  '1.1.png', '1.2.png', '1.3.png', '1.4.png', '1.5.png', '1.6.png', '1.7.png',
+  '1.8.png', '1.9.png', '1.11.png', '1.12.png', '1.13.png', '1.14.png',
+  '1.15.png', '1.16.png', '1.17.png', '1.18.png', '1.19.png',
+  '东.png', '中.png', '兰.png', '冬.png', '北.png', '南.png', '发.png',
+  '夏.png', '春.png', '梅.png', '白.png', '秋.png', '竹.png', '菊.png', '西.png'
+];
+let board = [], selectedCell = null, isConnecting = false, connectionTimer = null, levelTimer = null;
+
+// 初始化当前关卡的棋盘（外围加一圈0作为通路）
+function initGame() {
+  clearTimeout(connectionTimer);
+  clearTimeout(levelTimer);
+  connectionTimer = null;
+  levelTimer = null;
+  isConnecting = false;
+  selectedCell = null;
+  const level = LEVELS[currentLevel];
+  ROWS = level.rows;
+  COLS = level.cols;
+  document.getElementById('level-name').textContent = `第 ${currentLevel + 1} 关 · ${level.name}`;
+  document.getElementById('tile-count').textContent = `${ROWS * COLS} 张牌`;
+  const gameMessage = document.getElementById('game-message');
+  gameMessage.hidden = true;
+  gameMessage.textContent = '';
+  board = Array.from({length: ROWS+2}, () => Array(COLS+2).fill(0));
+  const boardEl = document.getElementById('board');
+  boardEl.style.setProperty('--board-columns', String(COLS + 2));
+  const shuffledImages = [...IMAGE_FILES];
+  // 洗牌后限制每关的图案种类，让相同图案重复出现以便配对。
+  for (let i = shuffledImages.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [shuffledImages[i], shuffledImages[j]] = [shuffledImages[j], shuffledImages[i]];
+  }
+  const pairCount = (ROWS * COLS) / 2;
+  const levelImages = shuffledImages.slice(0, level.imageTypes);
+  const pairs = Array.from({ length: pairCount }, (_, index) => levelImages[index % levelImages.length])
+    .flatMap(image => [image, image]);
+  for (let i = pairs.length-1; i > 0; i--) {
+    let j = Math.floor(Math.random() * (i+1));
+    [pairs[i], pairs[j]] = [pairs[j], pairs[i]];
+  }
+  let k = 0;
+  for (let r = 1; r <= ROWS; r++)
+    for (let c = 1; c <= COLS; c++)
+      board[r][c] = pairs[k++];
+  render();
+}
+
+function render() {
+  let el = document.getElementById('board');
+  el.innerHTML = '';
+  for (let r = 0; r < ROWS+2; r++) {
+    for (let c = 0; c < COLS+2; c++) {
+      let div = document.createElement('div');
+      div.className = 'cell' + (board[r][c] === 0 ? ' empty' : '');
+      if (board[r][c] !== 0) {
+        const img = document.createElement('img');
+        const imageFile = board[r][c];
+        img.src = `images/${encodeURIComponent(imageFile)}`;
+        img.alt = `图案 ${imageFile}`;
+        div.appendChild(img);
+      }
+      div.dataset.r = r; div.dataset.c = c;
+      div.onclick = () => onClick(r, c, div);
+      el.appendChild(div);
+    }
+  }
+}
+
+// 点击处理
+function onClick(r, c, el) {
+  if (isConnecting || board[r][c] === 0) return;
+  if (!selectedCell) {
+    selectedCell = {r, c, el};
+    el.classList.add('selected');
+  } else {
+    let {r: r1, c: c1, el: el1} = selectedCell;
+    if (r1 === r && c1 === c) return;
+    const path = board[r1][c1] === board[r][c]
+      ? findConnectionPath(r1, c1, r, c)
+      : null;
+    if (path) {
+      el1.classList.remove('selected');
+      el.classList.remove('selected');
+      selectedCell = null;
+      isConnecting = true;
+      drawConnection(path);
+      connectionTimer = setTimeout(() => {
+        board[r1][c1] = 0;
+        board[r][c] = 0;
+        isConnecting = false;
+        connectionTimer = null;
+        render();
+        if (isBoardCleared()) completeLevel();
+      }, 450);
+    } else {
+      el1.classList.remove('selected');
+      selectedCell = {r, c, el};
+      el.classList.add('selected');
+    }
+  }
+}
+
+function isBoardCleared() {
+  return board.every(row => row.every(cell => cell === 0));
+}
+
+function completeLevel() {
+  const gameMessage = document.getElementById('game-message');
+  if (currentLevel === LEVELS.length - 1) {
+    gameMessage.textContent = '恭喜通关！你完成了全部 5 个关卡。';
+    gameMessage.hidden = false;
+    currentLevel = 0;
+    return;
+  }
+
+  currentLevel++;
+  gameMessage.textContent = `本关完成！即将进入第 ${currentLevel + 1} 关`;
+  gameMessage.hidden = false;
+  levelTimer = setTimeout(() => {
+    levelTimer = null;
+    initGame();
+  }, 900);
+}
+
+function findConnectionPath(r1, c1, r2, c2) {
+  if (board[r1][c1] !== board[r2][c2]) return null;
+
+  const directions = [[-1, 0], [1, 0], [0, -1], [0, 1]];
+  const start = { r: r1, c: c1, direction: -1, turns: 0, parent: null };
+  const queue = [start];
+  const visited = new Set([`${r1},${c1},-1,0`]);
+
+  for (let index = 0; index < queue.length; index++) {
+    const current = queue[index];
+    if (current.r === r2 && current.c === c2) {
+      const path = [];
+      for (let node = current; node; node = node.parent) {
+        path.push([node.r, node.c]);
+      }
+      return path.reverse();
+    }
+
+    for (let direction = 0; direction < directions.length; direction++) {
+      const [dr, dc] = directions[direction];
+      const r = current.r + dr;
+      const c = current.c + dc;
+      if (r < 0 || r >= ROWS + 2 || c < 0 || c >= COLS + 2) continue;
+      if ((r !== r2 || c !== c2) && board[r][c] !== 0) continue;
+
+      const turns = current.turns + (current.direction !== -1 && current.direction !== direction ? 1 : 0);
+      if (turns > 2) continue;
+
+      const key = `${r},${c},${direction},${turns}`;
+      if (visited.has(key)) continue;
+      visited.add(key);
+      queue.push({ r, c, direction, turns, parent: current });
+    }
+  }
+
+  return null;
+}
+
+function drawConnection(path) {
+  const boardEl = document.getElementById('board');
+  const centers = path.map(([r, c]) => {
+    const cell = boardEl.querySelector(`.cell[data-r="${r}"][data-c="${c}"]`);
+    return [cell.offsetLeft + cell.offsetWidth / 2, cell.offsetTop + cell.offsetHeight / 2];
+  });
+
+  const points = centers.filter((point, index) => {
+    if (index === 0 || index === centers.length - 1) return true;
+    const [prevX, prevY] = centers[index - 1];
+    const [nextX, nextY] = centers[index + 1];
+    return (point[0] - prevX) * (nextY - point[1]) !==
+      (point[1] - prevY) * (nextX - point[0]);
+  });
+
+  const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+  svg.classList.add('connection-line');
+  svg.setAttribute('viewBox', `0 0 ${boardEl.clientWidth} ${boardEl.clientHeight}`);
+  svg.setAttribute('aria-hidden', 'true');
+
+  const tileSize = boardEl.querySelector('.cell').getBoundingClientRect().width;
+  const radius = Math.min(8, tileSize * 0.2);
+  let pathData = `M ${points[0][0]} ${points[0][1]}`;
+  for (let i = 1; i < points.length - 1; i++) {
+    const [x, y] = points[i];
+    const [prevX, prevY] = points[i - 1];
+    const [nextX, nextY] = points[i + 1];
+    const toCorner = [x - Math.sign(x - prevX) * radius, y - Math.sign(y - prevY) * radius];
+    const fromCorner = [x + Math.sign(nextX - x) * radius, y + Math.sign(nextY - y) * radius];
+    pathData += ` L ${toCorner[0]} ${toCorner[1]} Q ${x} ${y} ${fromCorner[0]} ${fromCorner[1]}`;
+  }
+  pathData += ` L ${points[points.length - 1][0]} ${points[points.length - 1][1]}`;
+
+  const addStroke = (className, color, width) => {
+    const line = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+    line.classList.add(className);
+    line.setAttribute('d', pathData);
+    line.setAttribute('stroke', color);
+    line.setAttribute('stroke-width', String(width));
+    svg.appendChild(line);
+  };
+  addStroke('line-glow', '#ffb900', 15);
+  addStroke('line-halo', '#ffc928', 8);
+  addStroke('line-core', '#fff7b0', 4);
+
+  for (const [x, y] of points.slice(1, -1)) {
+    const jointGlow = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+    jointGlow.setAttribute('cx', String(x));
+    jointGlow.setAttribute('cy', String(y));
+    jointGlow.setAttribute('r', '7');
+    jointGlow.setAttribute('fill', '#ffd84a');
+    jointGlow.setAttribute('filter', 'blur(2px)');
+    svg.appendChild(jointGlow);
+
+    const joint = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+    joint.setAttribute('cx', String(x));
+    joint.setAttribute('cy', String(y));
+    joint.setAttribute('r', '4.5');
+    joint.setAttribute('fill', '#fff8c7');
+    joint.setAttribute('stroke', '#ffc928');
+    joint.setAttribute('stroke-width', '2');
+    svg.appendChild(joint);
+  }
+
+  boardEl.appendChild(svg);
+}
+
+initGame();
+</script>
+</body>
+</html>
