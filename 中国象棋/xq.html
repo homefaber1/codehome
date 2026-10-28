@@ -1,0 +1,235 @@
+
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>中国象棋 - 人机对战</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        body {
+            background-color: #f3f4f6;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+        .chess-board {
+            background-color: #e5c28e;
+            background-image:
+                repeating-linear-gradient(0deg, rgba(119, 76, 35, 0.045) 0, transparent 2px, transparent 7px),
+                linear-gradient(135deg, #f3d9aa 0%, #e7c48b 48%, #d7ad70 100%);
+            box-shadow: 0 12px 28px rgba(77, 46, 20, 0.3), inset 0 0 0 3px rgba(255, 227, 177, 0.55), inset 0 0 14px rgba(111, 66, 27, 0.18);
+            position: relative;
+            user-select: none;
+        }
+        .grid-line {
+            position: absolute;
+            background-color: rgba(91, 55, 29, 0.82);
+            pointer-events: none;
+        }
+        .piece {
+            width: 9%;
+            height: 8.1%;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            font-size: clamp(0.75rem, 3.5vw, 1.2rem);
+            line-height: 1;
+            cursor: pointer;
+            transition: transform 0.2s, box-shadow 0.2s, filter 0.2s;
+            box-shadow: 0 7px 3px rgba(82, 47, 21, 0.28), 2px 10px 12px rgba(65, 38, 17, 0.38), inset 0 3px 4px rgba(255, 249, 229, 0.98), inset 0 0 0 2px rgba(255, 235, 196, 0.55), inset 0 -5px 7px rgba(99, 55, 22, 0.36);
+            text-shadow: 0 1px 0 rgba(255, 238, 199, 0.95), 0 -1px 0 rgba(98, 56, 24, 0.22), 0 2px 2px rgba(70, 38, 18, 0.25);
+            position: absolute;
+            transform: translate(-50%, -50%);
+            z-index: 10;
+        }
+        .piece::before {
+            content: '';
+            position: absolute;
+            inset: 3px;
+            border: 1px solid rgba(126, 78, 35, 0.62);
+            border-radius: 50%;
+            box-shadow: 0 1px 1px rgba(255, 246, 224, 0.9), inset 0 2px 2px rgba(255, 247, 224, 0.92), inset 0 -2px 3px rgba(104, 61, 27, 0.26);
+            pointer-events: none;
+        }
+        .piece::after {
+            content: '';
+            position: absolute;
+            top: 9%;
+            left: 18%;
+            width: 34%;
+            height: 18%;
+            border-radius: 50%;
+            background: rgba(255, 255, 240, 0.5);
+            filter: blur(2px);
+            pointer-events: none;
+        }
+        .piece.red {
+            background: radial-gradient(ellipse at 32% 20%, #fff8e6 0%, #f5d9a8 24%, #e5b878 49%, #c38448 76%, #985829 100%);
+            color: #a52e20;
+            border: 2px solid #985b2e;
+        }
+        .piece.black {
+            background: radial-gradient(ellipse at 32% 20%, #fff5dc 0%, #efd19b 24%, #d9ad70 49%, #b7783f 76%, #87502a 100%);
+            color: #493523;
+            border: 2px solid #784a2a;
+        }
+        .piece:hover {
+            transform: translate(-50%, -50%) scale(1.05);
+            filter: brightness(1.04);
+            box-shadow: 0 8px 4px rgba(82, 47, 21, 0.3), 3px 12px 14px rgba(65, 38, 17, 0.42), inset 0 3px 4px rgba(255, 249, 229, 0.98), inset 0 0 0 2px rgba(255, 235, 196, 0.55), inset 0 -5px 7px rgba(99, 55, 22, 0.36);
+        }
+        .piece.selected {
+            transform: translate(-50%, -50%) scale(1.1);
+            box-shadow: 0 0 15px rgba(255, 215, 0, 0.8), 0 7px 3px rgba(82, 47, 21, 0.28), 2px 10px 12px rgba(65, 38, 17, 0.38), inset 0 3px 4px rgba(255, 249, 229, 0.98), inset 0 0 0 2px rgba(255, 235, 196, 0.55), inset 0 -5px 7px rgba(99, 55, 22, 0.36);
+            z-index: 20;
+        }
+        .cell {
+            position: absolute;
+            width: 11.11%;
+            height: 10%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .last-move {
+            background-color: rgba(0, 255, 0, 0.2);
+            border-radius: 50%;
+        }
+        .valid-move::after {
+            content: '';
+            width: 30%;
+            height: 30%;
+            background-color: rgba(0, 128, 0, 0.5);
+            border-radius: 50%;
+        }
+        /* River Text */
+        .river-text {
+            position: absolute;
+            top: 50%;
+            transform: translateY(-50%);
+            width: 100%;
+            text-align: center;
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: #68462d;
+            opacity: 0.82;
+            pointer-events: none;
+            font-family: "STKaiti", "KaiTi", "华文楷体", "楷体", "Noto Serif CJK SC", serif;
+        }
+        .check-notification {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            z-index: 30;
+            isolation: isolate;
+            transform: translate(-50%, -50%);
+            color: #f3d89a;
+            font-size: clamp(3rem, 11vw, 5rem);
+            font-weight: 900;
+            letter-spacing: 0.08em;
+            white-space: nowrap;
+            -webkit-text-stroke: 1.5px rgba(48, 31, 21, 0.92);
+            paint-order: stroke fill;
+            text-shadow: 1px 2px 0 #6b472b, 0 3px 4px rgba(28, 20, 15, 0.55), 0 0 12px rgba(255, 221, 153, 0.55);
+            pointer-events: none;
+            font-family: "STXingkai", "Xingkai SC", "HanziPen SC", "STKaiti", "KaiTi", "华文行楷", "楷体", cursive;
+        }
+    </style>
+</head>
+<body class="h-screen flex flex-col items-center justify-center overflow-hidden">
+    <!-- Header -->
+    <header class="w-full max-w-4xl p-4 flex justify-between items-center bg-white shadow-md rounded-b-xl mb-4 z-30">
+        <div class="flex items-center gap-3">
+            <i class="fas fa-chess-board text-3xl text-amber-700"></i>
+            <h1 class="text-2xl font-bold text-gray-800">中国象棋 <span class="text-sm font-normal text-gray-500">人机对战版</span></h1>
+        </div>
+        <div class="flex gap-4">
+            <div class="flex items-center gap-2">
+                <span class="text-sm font-semibold text-gray-600">难度:</span>
+                <select id="difficulty" class="bg-gray-100 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-amber-500 focus:border-amber-500 block p-2">
+                    <option value="1">新手 (Depth 1)</option>
+                    <option value="2" selected>普通 (Depth 2)</option>
+                    <option value="3">困难 (Depth 3)</option>
+                </select>
+            </div>
+            <button onclick="game.restart()" class="bg-amber-600 hover:bg-amber-700 text-white font-bold py-2 px-4 rounded-lg transition duration-200 flex items-center gap-2">
+                <i class="fas fa-redo"></i> 重新开始
+            </button>
+        </div>
+    </header>
+
+    <!-- Main Game Area -->
+    <main class="flex flex-col md:flex-row gap-6 w-full max-w-6xl px-4 h-[80vh]">
+        
+        <!-- Board Container -->
+        <div class="flex-1 flex items-center justify-center bg-white p-4 rounded-xl shadow-lg relative">
+            <div id="board" class="chess-board w-full max-w-[500px] aspect-[9/10] relative rounded-lg border-4 border-amber-900">
+                <!-- Grid Lines will be drawn by JS or CSS background, here we use absolute positioning for pieces -->
+                <div class="river-text">楚 河 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 汉 界</div>
+                <!-- Pieces will be injected here -->
+            </div>
+            
+            <!-- Game Over Modal -->
+            <div id="modal" class="hidden absolute inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 rounded-xl">
+                <div class="bg-white p-8 rounded-xl shadow-2xl text-center max-w-sm w-full transform transition-all scale-100">
+                    <div id="modal-icon" class="text-6xl mb-4 text-amber-600">
+                        <i class="fas fa-trophy"></i>
+                    </div>
+                    <h2 id="modal-title" class="text-2xl font-bold mb-2 text-gray-800">游戏结束</h2>
+                    <p id="modal-message" class="text-gray-600 mb-6">红方胜利！</p>
+                    <button onclick="game.restart(); document.getElementById('modal').classList.add('hidden')" class="w-full bg-amber-600 hover:bg-amber-700 text-white font-bold py-3 px-4 rounded-lg transition">
+                        再来一局
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Sidebar Info -->
+        <aside class="w-full md:w-80 flex flex-col gap-4">
+            <!-- Status Card -->
+            <div class="bg-white p-6 rounded-xl shadow-lg">
+                <h3 class="text-lg font-bold text-gray-800 mb-4 border-b pb-2">对局状态</h3>
+                <div class="space-y-4">
+                    <div class="flex justify-between items-center">
+                        <span class="text-gray-600">当前回合</span>
+                        <span id="turn-indicator" class="px-3 py-1 rounded-full text-sm font-bold bg-red-100 text-red-800">红方走棋</span>
+                    </div>
+                    <div class="flex justify-between items-center">
+                        <span class="text-gray-600">游戏状态</span>
+                        <span id="game-status" class="text-green-600 font-semibold" role="status" aria-live="polite">进行中</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Move History -->
+            <div class="bg-white p-6 rounded-xl shadow-lg flex-1 flex flex-col">
+                <h3 class="text-lg font-bold text-gray-800 mb-4 border-b pb-2">走棋记录</h3>
+                <div id="move-history" class="flex-1 overflow-y-auto text-sm space-y-2 pr-2 custom-scrollbar">
+                    <div class="text-gray-400 text-center italic mt-10">暂无走棋记录</div>
+                </div>
+            </div>
+
+            <!-- Controls -->
+            <div class="bg-white p-6 rounded-xl shadow-lg">
+                <h3 class="text-lg font-bold text-gray-800 mb-4 border-b pb-2">操作</h3>
+                <div class="grid grid-cols-2 gap-3">
+                    <button onclick="game.undo()" class="bg-gray-200 hover:bg-gray-300 text-gray-800 font-bold py-2 px-4 rounded-lg transition">
+                        <i class="fas fa-undo"></i> 悔棋
+                    </button>
+                    <button onclick="game.toggleSound()" id="sound-btn" class="bg-gray-200 hover:bg-gray-300 text-gray-800 font-bold py-2 px-4 rounded-lg transition">
+                        <i class="fas fa-volume-up"></i> 音效: 开
+                    </button>
+                </div>
+            </div>
+        </aside>
+    </main>
+
+    <footer class="mt-4 text-gray-500 text-sm">
+        &copy; 2026 中国象棋 AI 对战平台 | 基于 Minimax 算法
+    </footer>
+
+    <script src="xq.js"></script>
+</body>
+</html>
