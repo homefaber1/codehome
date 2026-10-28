@@ -178,6 +178,7 @@ const LEVELS = [
 let currentLevel = 0;
 let ROWS = LEVELS[currentLevel].rows;
 let COLS = LEVELS[currentLevel].cols;
+const MAX_IMAGE_RETRIES = 2;
 const IMAGE_FILES = [
   '1.png', '2.png', '3.png', '4.png', '5.png', '6.png', '7.png', '8.png', '9.png',
   '1.1.png', '1.2.png', '1.3.png', '1.4.png', '1.5.png', '1.6.png', '1.7.png',
@@ -187,6 +188,23 @@ const IMAGE_FILES = [
   '夏.png', '春.png', '梅.png', '白.png', '秋.png', '竹.png', '菊.png', '西.png'
 ];
 let board = [], selectedCell = null, isConnecting = false, connectionTimer = null, levelTimer = null;
+
+function loadTileImage(img, imageFile, attempt = 0) {
+  const imageUrl = `images/${encodeURIComponent(imageFile)}`;
+  img.onerror = () => {
+    if (attempt >= MAX_IMAGE_RETRIES) {
+      img.alt = `图案加载失败：${imageFile}`;
+      const gameMessage = document.getElementById('game-message');
+      gameMessage.textContent = '部分图片加载失败，请检查网络后重新开始。';
+      gameMessage.hidden = false;
+      return;
+    }
+
+    const nextAttempt = attempt + 1;
+    window.setTimeout(() => loadTileImage(img, imageFile, nextAttempt), 250 * nextAttempt);
+  };
+  img.src = attempt === 0 ? imageUrl : `${imageUrl}?retry=${attempt}`;
+}
 
 // 初始化当前关卡的棋盘（外围加一圈0作为通路）
 function initGame() {
@@ -238,8 +256,8 @@ function render() {
       if (board[r][c] !== 0) {
         const img = document.createElement('img');
         const imageFile = board[r][c];
-        img.src = `images/${encodeURIComponent(imageFile)}`;
         img.alt = `图案 ${imageFile}`;
+        loadTileImage(img, imageFile);
         div.appendChild(img);
       }
       div.dataset.r = r; div.dataset.c = c;
